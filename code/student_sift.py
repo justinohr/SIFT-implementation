@@ -72,7 +72,7 @@ def get_features(image, x, y, feature_width, scales=None):
     graident_x = cv2.Sobel(image, 1,0)
     gradient_y = cv2.Sobel(image, 0,1)
     mag = np.sqrt(np.square(gradient_x) + np.square(gradient_y))
-    phase = np.arctan(np.division(gradient_y, gradient_x))
+    phase = get_phase(gradient_x, gradient_y, gradient_x.size)
 
     for x_, y_ in zip(x, y):
         x_ = int(round(x_[0]))
@@ -80,11 +80,16 @@ def get_features(image, x, y, feature_width, scales=None):
         m = mag[y_-offset:y_+offset, x_-offset:x_+offset]
         p = phase[y_-offset:y_+offset, x_-offset:x_+offset]
 
-        bins = [[0] for i in range(36)]
+        bins = np.zeros(36)
 
         for m_, p_ in zip(m,p):
-            
+            bins[int(p_/10)] += m_
+        orientation = np.argmax(bins)
 
+        p += orientation * 10
+        p %= 360
+        print(p)
+        feature = getHistogram(m, p)
         feature = feature.reshape(feature.size)
         fv.append(feature)
 
@@ -93,3 +98,19 @@ def get_features(image, x, y, feature_width, scales=None):
     #                             END OF YOUR CODE                              #
     #############################################################################
     return fv
+
+# The range of phase is 0 to 2pi
+def get_phase(grad_x, grad_y, N):
+    phase = np.zeros((N,N))
+    for i in range(N):
+        for j in range(N):
+            if grad_x[i,j] > 0 and grad_y[i,j] > 0:
+                phase[i,j] = np.arctan(np.division(gradient_y, gradient_x))
+            elif grad_x[i,j] < 0 and grad_y[i,j] > 0:
+                phase[i,j] = np.arctan(np.division(gradient_y, gradient_x)) + np.pi
+            elif grad_x[i,j] < 0 and grad_y[i,j] < 0:
+                phase[i,j] = np.arctan(np.division(gradient_y, gradient_x)) + np.pi
+            else:
+                phase[i,j] = np.arctan(np.division(gradient_y, gradient_x)) + np.pi * 2
+
+    return phase
